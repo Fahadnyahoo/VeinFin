@@ -1,0 +1,22 @@
+services:
+  sonarr:
+    ports:
+      - name: sonarr-bootstrap
+        target: 8989
+        published: "8989"
+        host_ip: 127.0.0.1
+        protocol: tcp
+  radarr:
+    ports:
+      - name: radarr-bootstrap
+        target: 7878
+        published: "7878"
+        host_ip: 127.0.0.1
+        protocol: tcp
+  prowlarr:
+    ports:
+      - name: prowlarr-bootstrap
+        target: 9696
+        published: "9696"
+        host_ip: 127.0.0.1
+        protocol: tcp

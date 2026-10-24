@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "resource_revisions": {
+    "recyclarr_version": "8.8.0",
+    "config_templates": "89eebadd429952069182a22930af4d768cacda36",
+    "trash_guides": "64f542670d82e279d3d4ea67850b6753313cfd5f"
+  },
+  "profiles": {
+    "movies": {
+      "application": "radarr",
+      "name": "VeinFin Movies 4K",
+      "qualities": [
+        {"name": "Bluray-2160p"},
+        {"name": "WEB 2160p", "qualities": ["WEBDL-2160p", "WEBRip-2160p"]},
+        {"name": "Bluray-1080p"},
+        {"name": "WEB 1080p", "qualities": ["WEBDL-1080p", "WEBRip-1080p"]}
+      ],
+      "upgrade_until": "Bluray-2160p",
+      "reject": {
+        "Dolby Vision without HDR10 fallback": "923b6abef9b17f937fab56cfcf89e1f1",
+        "AV1": "cae4ca30163749b891686f95532519bd",
+        "3D": "b8cd450cbfa689c0259a01d9e29ba3d6",
+        "Blu-ray disc image": "ed38b889b31be83fda192888e2286d83",
+        "HLG": "9364dd386c9b4a1100dde8264690add7",
+        "Low-quality release groups": "90a6f9a284dff5103f6346090e6280c8",
+        "Low-quality release titles": "e204b80c87be9497a8a6eaff48f72905",
+        "Upscaled": "bfd8eb01832d646a0a89c4deb46f8564"
+      },
+      "prefer": {"x265/HEVC": {"trash_id": "9170d55c319f4fe40da8711ba9d8050d", "score": 100}}
+    },
+    "tv": {
+      "application": "sonarr",
+      "name": "VeinFin TV 1080p SDR",
+      "qualities": [
+        {"name": "Bluray-1080p"},
+        {"name": "WEB 1080p", "qualities": ["WEBDL-1080p", "WEBRip-1080p"]}
+      ],
+      "upgrade_until": "Bluray-1080p",
+      "reject": {
+        "HDR family including HDR10, HDR10+, Dolby Vision, and HLG": "505d871304820ba7106b693be6fe4a9e",
+        "Dolby Vision without HDR fallback": "9b27ab6498ec0f31a3353992e19434ca",
+        "Dolby Vision disc": "ef4963043b0987f8485bc9106f16db38",
+        "AV1": "15a05bc7c1a36e2b57fd628f8977e2fc",
+        "Blu-ray disc image": "85c61753df5da1fb2aab6f2a47426b09",
+        "Low-quality release groups": "9c11cd3f07101cdba90a2d81cf0e56b4",
+        "Low-quality release titles": "e2315f990da2e2cbfc9fa5b7a6fcfe48",
+        "Upscaled": "23297a736ca77c0fc8e70f8edd7ee56c"
+      },
+      "prefer": {}
+    },
+    "anime": {
+      "application": "sonarr",
+      "name": "VeinFin Anime 1080p SDR",
+      "qualities": [
+        {"name": "Bluray-1080p"},
+        {"name": "WEB 1080p", "qualities": ["WEBDL-1080p", "WEBRip-1080p"]}
+      ],
+      "upgrade_until": "Bluray-1080p",
+      "reject": {
+        "HDR family including HDR10, HDR10+, Dolby Vision, and HLG": "505d871304820ba7106b693be6fe4a9e",
+        "Dolby Vision without HDR fallback": "9b27ab6498ec0f31a3353992e19434ca",
+        "Dolby Vision disc": "ef4963043b0987f8485bc9106f16db38",
+        "AV1": "15a05bc7c1a36e2b57fd628f8977e2fc",
+        "Blu-ray disc image": "85c61753df5da1fb2aab6f2a47426b09",
+        "Low-quality release groups": "9c11cd3f07101cdba90a2d81cf0e56b4",
+        "Low-quality release titles": "e2315f990da2e2cbfc9fa5b7a6fcfe48",
+        "Anime low-quality groups": "e3515e519f3b1360cbfc17651944354c",
+        "Dubs only": "9c14d194486c4014d422adc64092d794",
+        "Upscaled": "23297a736ca77c0fc8e70f8edd7ee56c"
+      },
+      "prefer": {
+        "Anime dual audio": {"trash_id": "418f50b10f1907201b6cfdf881f467b7", "score": 50},
+        "x265/HEVC": {"trash_id": "c9eafd50846d299b862ca9bb6ea91950", "score": 100}
+      }
+    }
+  }
+}

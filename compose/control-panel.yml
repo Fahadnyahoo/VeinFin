@@ -1,0 +1,176 @@
+services:
+  qbittorrent:
+    ports:
+      - name: qbittorrent-loopback
+        target: 8080
+        published: "8080"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: qbittorrent-management
+        target: 8080
+        published: "${QBITTORRENT_MANAGEMENT_PORT:-8080}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+
+  sonarr:
+    ports:
+      - name: sonarr-loopback
+        target: 8989
+        published: "8989"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: sonarr-management
+        target: 8989
+        published: "${SONARR_MANAGEMENT_PORT:-8989}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+
+  radarr:
+    ports:
+      - name: radarr-loopback
+        target: 7878
+        published: "7878"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: radarr-management
+        target: 7878
+        published: "${RADARR_MANAGEMENT_PORT:-7878}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+
+  prowlarr:
+    ports:
+      - name: prowlarr-loopback
+        target: 9696
+        published: "9696"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: prowlarr-management
+        target: 9696
+        published: "${PROWLARR_MANAGEMENT_PORT:-9696}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+
+  bazarr:
+    ports:
+      - name: bazarr-loopback
+        target: 6767
+        published: "6767"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: bazarr-management
+        target: 6767
+        published: "${BAZARR_MANAGEMENT_PORT:-6767}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+
+  seerr:
+    ports:
+      - name: seerr-loopback
+        target: 5055
+        published: "5055"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: seerr-management
+        target: 5055
+        published: "${SEERR_MANAGEMENT_PORT:-5055}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+
+  veinfin-panel:
+    image: ${VEINFIN_PANEL_IMAGE:?Set immutable VEINFIN_PANEL_IMAGE}
+    restart: unless-stopped
+    init: true
+    user: "65532:65532"
+    environment:
+      VEINFIN_PANEL_MODE: panel
+      MANAGEMENT_USERNAME: ${MANAGEMENT_USERNAME:?Set MANAGEMENT_USERNAME}
+      PANEL_ORIGIN: ${PANEL_ORIGIN:?Set PANEL_ORIGIN}
+      VISIT_URLS_JSON: ${VISIT_URLS_JSON:?Set VISIT_URLS_JSON}
+      SESSION_SECONDS: "28800"
+      AGENT_SECRET_FILE: /run/secrets/agent-secret
+      PASSWORD_HASH_FILE: /run/secrets/password-hash
+      SESSION_SECRET_FILE: /run/secrets/session-secret
+      TLS_CERT_FILE: /run/secrets/panel.crt
+      TLS_KEY_FILE: /run/secrets/panel.key
+    ports:
+      - name: veinfin-panel-loopback
+        target: 3000
+        published: "3000"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: veinfin-panel-management
+        target: 3000
+        published: "${CONTROL_PANEL_MANAGEMENT_PORT:-3000}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+    volumes:
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/secrets/control_panel-agent-secret:/run/secrets/agent-secret:ro
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/secrets/control_panel-password-hash:/run/secrets/password-hash:ro
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/secrets/control_panel-session-secret:/run/secrets/session-secret:ro
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/secrets/control_panel-panel.crt:/run/secrets/panel.crt:ro
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/secrets/control_panel-panel.key:/run/secrets/panel.key:ro
+    networks:
+      - control
+      - panel-ingress
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; s=socket.create_connection(('127.0.0.1',3000),3); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "VeinFin control panel"
+      io.veinfin.category: "management"
+      io.veinfin.actions: "none"
+      io.veinfin.exposure: "private"
+
+  veinfin-agent:
+    image: ${VEINFIN_PANEL_IMAGE:?Set immutable VEINFIN_PANEL_IMAGE}
+    restart: unless-stopped
+    init: true
+    user: "65532:65532"
+    group_add:
+      - "${DOCKER_SOCKET_GID:?Set DOCKER_SOCKET_GID}"
+    environment:
+      VEINFIN_PANEL_MODE: agent
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-veinfin}
+      AGENT_SECRET_FILE: /run/secrets/agent-secret
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/secrets/control_panel-agent-secret:/run/secrets/agent-secret:ro
+    networks:
+      control:
+        aliases: [agent]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "VeinFin restricted lifecycle agent"
+      io.veinfin.category: "management"
+      io.veinfin.actions: "none"
+      io.veinfin.exposure: "internal"
+
+networks:
+  control:
+    internal: true
+    labels:
+      io.veinfin.network-purpose: "panel-to-restricted-agent-only"
+  panel-ingress:
+    labels:
+      io.veinfin.network-purpose: "allowlisted-panel-ingress-only"

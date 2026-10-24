@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "qbittorrent_version": "5.3.0",
+  "ratio_limit": 1.0,
+  "seeding_time_minutes": 1440,
+  "share_limits_mode": "MatchAny",
+  "share_limit_action": "Stop",
+  "share_limit_action_api_value": 0,
+  "categories": {
+    "movies": "/data/torrents/movies",
+    "tv": "/data/torrents/tv",
+    "anime": "/data/torrents/anime"
+  },
+  "incomplete_path": "/data/torrents/incomplete",
+  "validation_category": "download_lifecycle-validation",
+  "validation_tag": "download_lifecycle-validation",
+  "verified": "2026-10-24",
+  "contracts": {
+    "match_any": "Either the ratio or seeding-time limit is sufficient.",
+    "stop": "Stop pauses the torrent without removing its entry or content.",
+    "completed_cleanup": "Removal requires a successful complete hardlink import and a stopped complete torrent after a share limit.",
+    "failed_cleanup": "Failed, partial, unknown, active, or unimported downloads are retained."
+  }
+}

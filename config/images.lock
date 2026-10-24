@@ -1,0 +1,13 @@
+# VeinFin image lock; verified 2026-10-23 against official registries.
+# Format: ENV_KEY|REPOSITORY|TAG|MULTIARCH_DIGEST|LINUX_PLATFORMS
+CADDY_IMAGE_TAG|caddy|2.11.7-alpine|sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f|amd64,arm/v6,arm/v7,arm64/v8,ppc64le,riscv64,s390x
+JELLYFIN_IMAGE_TAG|jellyfin/jellyfin|12.3|sha256:2038fe038ab3876a80f6e7b7e0aef6607b032c7dc0c9b3ad3296d0b2eba3bbb5|amd64,arm64
+QBITTORRENT_IMAGE_TAG|lscr.io/linuxserver/qbittorrent|5.3.0_v2.1.2-ls484|sha256:e887804fa9de4c60f5f0fb1f3a7e4febe40a8f69fe736f70c4e8589b1f868dab|amd64,arm64
+SONARR_IMAGE_TAG|lscr.io/linuxserver/sonarr|4.0.20.3014-ls1|sha256:889dcc58c6aea859033985894b519b2e6b1e55d92527ed123f9f52e42ae7c97b|amd64,arm64
+RADARR_IMAGE_TAG|lscr.io/linuxserver/radarr|6.4.4.10685-ls323|sha256:fc0ae3c50f8128b97e84381903ec8d6845c3a569641cb7117c124376cccb57c1|amd64,arm64
+PROWLARR_IMAGE_TAG|lscr.io/linuxserver/prowlarr|2.6.5.5623-ls165|sha256:b3b00047ed20f6ce2b16780145cb6a0acb51c9e28ea6aa6f5dcd33c7034f1797|amd64,arm64
+BAZARR_IMAGE_TAG|lscr.io/linuxserver/bazarr|v1.6.2-ls369|sha256:946dc8c5bb5331418eac60050cf40a63cb8f66ac039841dda493870e3559799c|amd64,arm64
+SEERR_IMAGE_TAG|ghcr.io/seerr-team/seerr|v3.5.1|sha256:d8fab675b55ad293ded98fd71efcfd46054cbad9746534ae1cc4794a88c0b3be|amd64,arm64
+RECYCLARR_IMAGE_TAG|ghcr.io/recyclarr/recyclarr|8.8.0|sha256:b1fbb929ba718fdbdac2c1fc25b32b0ae916d7a5a0892c2068c9bfae6f1a9209|amd64,arm/v7,arm64
+FLARESOLVERR_IMAGE_TAG|ghcr.io/flaresolverr/flaresolverr|v3.5.2|sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767|386,amd64,arm/v7,arm64
+PANEL_BUILD_BASE|python|3.13.17-alpine3.24|sha256:fa0bb0d0cd7c7d6cef30a69094d32ac2b71c7304c87c6107fec100e1ee4eda02|386,amd64,arm/v6,arm/v7,arm64,ppc64le,s390x

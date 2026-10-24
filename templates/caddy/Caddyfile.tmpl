@@ -1,0 +1,23 @@
+{
+	admin off
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$PUBLIC_HOSTNAME} {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+	encode zstd gzip
+	reverse_proxy jellyfin:8096
+}

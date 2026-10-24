@@ -1,0 +1,8 @@
+services:
+  jellyfin:
+    ports:
+      - name: jellyfin-bootstrap
+        target: 8096
+        published: "8096"
+        host_ip: 127.0.0.1
+        protocol: tcp

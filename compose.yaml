@@ -1,0 +1,349 @@
+name: ${COMPOSE_PROJECT_NAME:-veinfin}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-file: "3"
+    max-size: 10m
+
+x-common-environment: &common-environment
+  TZ: ${TZ:?Set TZ}
+
+x-linuxserver-environment: &linuxserver-environment
+  PUID: ${PUID:?Set PUID}
+  PGID: ${PGID:?Set PGID}
+  TZ: ${TZ:?Set TZ}
+  UMASK: ${UMASK:?Set UMASK}
+
+x-common-security: &common-security
+  - no-new-privileges:true
+
+services:
+  reverse-proxy:
+    image: caddy:${CADDY_IMAGE_TAG:?Set CADDY_IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    environment:
+      <<: *common-environment
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?Set PUBLIC_HOSTNAME}
+    ports:
+      - "${PUBLIC_BIND_IP:?Set PUBLIC_BIND_IP}:${HTTPS_PORT:-443}:443/tcp"
+    volumes:
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/caddy/data:/data
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/caddy/config:/config
+    networks:
+      - proxy
+    depends_on:
+      jellyfin:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "HTTPS reverse proxy"
+      io.veinfin.category: "edge"
+      io.veinfin.order: "10"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: ""
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "false"
+      io.veinfin.exposure: "public"
+
+  jellyfin:
+    image: jellyfin/jellyfin:${JELLYFIN_IMAGE_TAG:?Set JELLYFIN_IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    user: "${PUID:?Set PUID}:${PGID:?Set PGID}"
+    environment: *common-environment
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/jellyfin/config:/config
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/jellyfin/cache:/cache
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}/library:/data/library:ro
+    networks:
+      - proxy
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8096/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Jellyfin"
+      io.veinfin.category: "media"
+      io.veinfin.order: "20"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "https://${PUBLIC_HOSTNAME}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "public-via-proxy"
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:${QBITTORRENT_IMAGE_TAG:?Set QBITTORRENT_IMAGE_TAG}
+    restart: unless-stopped
+    environment: *linuxserver-environment
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/qbittorrent:/config
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}/torrents:/data/torrents
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "qBittorrent"
+      io.veinfin.category: "downloads"
+      io.veinfin.order: "30"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "${MANAGEMENT_URL_SCHEME:-http}://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${QBITTORRENT_MANAGEMENT_PORT:-8080}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "private"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:${SONARR_IMAGE_TAG:?Set SONARR_IMAGE_TAG}
+    restart: unless-stopped
+    environment: *linuxserver-environment
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/sonarr:/config
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}:/data
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8989/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Sonarr"
+      io.veinfin.category: "automation"
+      io.veinfin.order: "40"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "${MANAGEMENT_URL_SCHEME:-http}://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${SONARR_MANAGEMENT_PORT:-8989}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "private"
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:${RADARR_IMAGE_TAG:?Set RADARR_IMAGE_TAG}
+    restart: unless-stopped
+    environment: *linuxserver-environment
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/radarr:/config
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}:/data
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7878/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Radarr"
+      io.veinfin.category: "automation"
+      io.veinfin.order: "50"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "${MANAGEMENT_URL_SCHEME:-http}://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${RADARR_MANAGEMENT_PORT:-7878}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "private"
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:${PROWLARR_IMAGE_TAG:?Set PROWLARR_IMAGE_TAG}
+    restart: unless-stopped
+    environment: *linuxserver-environment
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/prowlarr:/config
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9696/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Prowlarr"
+      io.veinfin.category: "automation"
+      io.veinfin.order: "60"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "${MANAGEMENT_URL_SCHEME:-http}://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${PROWLARR_MANAGEMENT_PORT:-9696}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "private"
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:${BAZARR_IMAGE_TAG:?Set BAZARR_IMAGE_TAG}
+    restart: unless-stopped
+    environment: *linuxserver-environment
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/bazarr:/config
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}/library/movies:/data/library/movies
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}/library/tv:/data/library/tv
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT}/library/anime:/data/library/anime
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6767/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Bazarr"
+      io.veinfin.category: "subtitles"
+      io.veinfin.order: "70"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "${MANAGEMENT_URL_SCHEME:-http}://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${BAZARR_MANAGEMENT_PORT:-6767}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "private"
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:${SEERR_IMAGE_TAG:?Set SEERR_IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    environment:
+      <<: *common-environment
+      LOG_LEVEL: info
+    volumes:
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/seerr:/app/config
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5055/api/v1/settings/public || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    cap_drop:
+      - ALL
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Seerr"
+      io.veinfin.category: "requests"
+      io.veinfin.order: "80"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: "${MANAGEMENT_URL_SCHEME:-http}://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${SEERR_MANAGEMENT_PORT:-5055}"
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "true"
+      io.veinfin.exposure: "private"
+
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:${RECYCLARR_IMAGE_TAG:?Set RECYCLARR_IMAGE_TAG}
+    profiles: ["automation"]
+    restart: "no"
+    user: "${PUID:?Set PUID}:${PGID:?Set PGID}"
+    environment:
+      <<: *common-environment
+      RECYCLARR_CONFIG_DIR: /config
+      RECYCLARR_DATA_DIR: /data
+    command: ["sync", "--preview"]
+    volumes:
+      - ${RUNTIME_ROOT:?Set RUNTIME_ROOT}/config/recyclarr:/config
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/recyclarr:/data
+    networks:
+      - application
+    security_opt: *common-security
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "Recyclarr"
+      io.veinfin.category: "automation"
+      io.veinfin.order: "90"
+      io.veinfin.health-source: "one-shot-exit-code"
+      io.veinfin.visit-url-template: ""
+      io.veinfin.actions: "start"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "false"
+      io.veinfin.exposure: "internal"
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:${FLARESOLVERR_IMAGE_TAG:?Set FLARESOLVERR_IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    environment:
+      <<: *common-environment
+      LOG_LEVEL: info
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8191/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    security_opt: *common-security
+    logging: *default-logging
+    labels:
+      io.veinfin.managed: "true"
+      io.veinfin.display-name: "FlareSolverr"
+      io.veinfin.category: "indexing"
+      io.veinfin.order: "100"
+      io.veinfin.health-source: "docker-health"
+      io.veinfin.visit-url-template: ""
+      io.veinfin.actions: "start,stop,restart"
+      io.veinfin.logs: "true"
+      io.veinfin.web-interface: "false"
+      io.veinfin.exposure: "internal"
+
+networks:
+  proxy:
+    driver: bridge
+    labels:
+      io.veinfin.network-purpose: "public-ingress-to-jellyfin"
+  application:
+    driver: bridge
+    labels:
+      io.veinfin.network-purpose: "private-service-communication"

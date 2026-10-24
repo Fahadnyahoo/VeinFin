@@ -1,0 +1,15 @@
+services:
+  bazarr:
+    ports:
+      - name: bazarr-bootstrap
+        target: 6767
+        published: "6767"
+        host_ip: 127.0.0.1
+        protocol: tcp
+  seerr:
+    ports:
+      - name: seerr-bootstrap
+        target: 5055
+        published: "5055"
+        host_ip: 127.0.0.1
+        protocol: tcp

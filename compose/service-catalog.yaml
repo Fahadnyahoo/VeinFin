@@ -1,0 +1,125 @@
+schema_version: 1
+label_namespace: io.veinfin
+required_fields:
+  - display_name
+  - compose_service
+  - health_source
+  - visit_url_template
+  - allowed_actions
+  - show_logs
+  - category
+  - order
+  - web_interface
+  - exposure
+services:
+  - display_name: HTTPS reverse proxy
+    compose_service: reverse-proxy
+    health_source: docker-health
+    visit_url_template: null
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: edge
+    order: 10
+    web_interface: false
+    exposure: public
+  - display_name: Jellyfin
+    compose_service: jellyfin
+    health_source: docker-health
+    visit_url_template: "https://${PUBLIC_HOSTNAME}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: media
+    order: 20
+    web_interface: true
+    exposure: public-via-proxy
+  - display_name: qBittorrent
+    compose_service: qbittorrent
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${QBITTORRENT_MANAGEMENT_PORT}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: downloads
+    order: 30
+    web_interface: true
+    exposure: private
+  - display_name: Sonarr
+    compose_service: sonarr
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${SONARR_MANAGEMENT_PORT}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: automation
+    order: 40
+    web_interface: true
+    exposure: private
+  - display_name: Radarr
+    compose_service: radarr
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${RADARR_MANAGEMENT_PORT}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: automation
+    order: 50
+    web_interface: true
+    exposure: private
+  - display_name: Prowlarr
+    compose_service: prowlarr
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${PROWLARR_MANAGEMENT_PORT}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: automation
+    order: 60
+    web_interface: true
+    exposure: private
+  - display_name: Bazarr
+    compose_service: bazarr
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${BAZARR_MANAGEMENT_PORT}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: subtitles
+    order: 70
+    web_interface: true
+    exposure: private
+  - display_name: Seerr
+    compose_service: seerr
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${SEERR_MANAGEMENT_PORT}"
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: requests
+    order: 80
+    web_interface: true
+    exposure: private
+  - display_name: Recyclarr
+    compose_service: recyclarr
+    health_source: one-shot-exit-code
+    visit_url_template: null
+    allowed_actions: [start]
+    show_logs: true
+    category: automation
+    order: 90
+    web_interface: false
+    exposure: internal
+  - display_name: FlareSolverr
+    compose_service: flaresolverr
+    health_source: docker-health
+    visit_url_template: null
+    allowed_actions: [start, stop, restart]
+    show_logs: true
+    category: indexing
+    order: 100
+    web_interface: false
+    exposure: internal
+  - display_name: VeinFin control panel
+    compose_service: control-panel
+    implementation: supported
+    health_source: docker-health
+    visit_url_template: "${MANAGEMENT_URL_SCHEME}://${MANAGEMENT_URL_HOST}:${CONTROL_PANEL_MANAGEMENT_PORT}"
+    allowed_actions: [visit]
+    show_logs: true
+    category: management
+    order: 110
+    web_interface: true
+    exposure: private

@@ -1,0 +1,47 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt.key
+
+# Generated installation state and configuration
+state/
+backups/
+generated/
+config/generated/
+runtime/
+compose.override.yaml
+compose.override.yml
+
+# Databases and runtime data
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+logs/
+*.log
+tmp/
+cache/
+certificates/
+credentials-summary.txt
+
+# Tooling and editor noise
+.DS_Store
+__MACOSX/
+.idea/
+.vscode/
+*.swp
+*.swo
+.coverage
+.pytest_cache/
+__pycache__/
+node_modules/

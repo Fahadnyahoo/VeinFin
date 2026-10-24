@@ -1,0 +1,4 @@
+# Supported Jellyfin plugin lock.
+#
+# Intentionally empty. Experimental or deferred plugins must never be added here
+# until they have passed the supported-feature acceptance process.

@@ -1,0 +1,6 @@
+# Documentation-only Compose design placeholder.
+#
+# A future opt-in implementation may define an opt-in Gluetun/VPN profile after provider,
+# credential, health, kill-switch, port-forwarding, and failure-mode contracts
+# are reviewed. This file intentionally creates no service or network path.
+services: {}

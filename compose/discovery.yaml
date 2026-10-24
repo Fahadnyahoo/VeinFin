@@ -1,0 +1,6 @@
+# Optional Jellyfin LAN auto-discovery. This override is disabled unless the
+# operator explicitly adds: -f compose/discovery.yaml
+services:
+  jellyfin:
+    ports:
+      - "${JELLYFIN_DISCOVERY_BIND_IP:?Set JELLYFIN_DISCOVERY_BIND_IP}:${JELLYFIN_DISCOVERY_PORT:-7359}:7359/udp"
