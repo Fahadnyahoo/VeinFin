@@ -18,10 +18,12 @@ expect_failure() { local name=$1; shift; if ( "$@" ) >/dev/null 2>&1; then test_
 file_mode() { if stat -c '%a' "$1" >/dev/null 2>&1; then stat -c '%a' "$1"; else stat -f '%Lp' "$1"; fi; }
 
 if bash -n "$SCRIPT"; then test_pass 'deployment script has valid Bash syntax'; else test_fail 'deployment script has valid Bash syntax'; fi
+grep -Fq 'existing installer-owned environment is preserved' "$SCRIPT" && test_pass 'installer-owned environment is preserved' || test_fail 'installer-owned environment is preserved'
 help_output=$($SCRIPT --help 2>&1)
 assert_contains "$help_output" 'scripts/deploy/jellyfin.sh --check' 'help documents check mode'
 assert_contains "$help_output" 'pull' 'help limits apply to the locked Jellyfin image'
 assert_contains "$help_output" 'ssh -N -L 8096:127.0.0.1:8096 user@host' 'help documents a generic loopback tunnel'
+grep -Fq 'expected_kefin=' "$SCRIPT" && test_pass 'pinned UI asset mount is verified' || test_fail 'pinned UI asset mount is verified'
 
 VEINFIN_JELLYFIN_LIBRARY_ONLY=1 source "$SCRIPT"
 set +e
@@ -35,7 +37,7 @@ expect_failure 'wildcard Jellyfin publication is rejected' validate_loopback_ove
 LOOPBACK_COMPOSE=$REPO_ROOT/compose/jellyfin-loopback.yaml
 
 bad_lock=$TEST_ROOT/images.lock
-sed 's/JELLYFIN_IMAGE_TAG|jellyfin\/jellyfin|12.3|sha256:[0-9a-f]*/JELLYFIN_IMAGE_TAG|jellyfin\/jellyfin|12.3|sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' "$IMAGE_LOCK" >"$bad_lock"
+sed 's/JELLYFIN_IMAGE_TAG|jellyfin\/jellyfin|10.11.11|sha256:[0-9a-f]*/JELLYFIN_IMAGE_TAG|jellyfin\/jellyfin|10.11.11|sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' "$IMAGE_LOCK" >"$bad_lock"
 IMAGE_LOCK=$bad_lock
 expect_failure 'incorrect Jellyfin image lock is rejected' load_image_pin
 IMAGE_LOCK=$REPO_ROOT/config/images.lock

@@ -20,6 +20,7 @@ x-common-security: &common-security
 
 services:
   reverse-proxy:
+    profiles: ["public-https"]
     image: caddy:${CADDY_IMAGE_TAG:?Set CADDY_IMAGE_TAG}
     restart: unless-stopped
     init: true
@@ -74,6 +75,7 @@ services:
     volumes:
       - ${CONFIG_ROOT:?Set CONFIG_ROOT}/jellyfin/config:/config
       - ${CONFIG_ROOT:?Set CONFIG_ROOT}/jellyfin/cache:/cache
+      - ${CONFIG_ROOT:?Set CONFIG_ROOT}/jellyfin/KefinTweaks:/jellyfin/jellyfin-web/KefinTweaks:ro
       - ${MEDIA_ROOT:?Set MEDIA_ROOT}/library:/data/library:ro
     networks:
       - proxy

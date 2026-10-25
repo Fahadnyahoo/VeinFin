@@ -4,12 +4,12 @@ VeinFin uses an explicit release tag plus the immutable digest of its multi-arch
 
 ## Verified lock
 
-Verification date: 2026-10-23. Every manifest listed below included Linux amd64.
+Verification date: 2026-10-24. Every manifest listed below included Linux amd64.
 
 | Service | Repository | Version | Manifest digest | Official source |
 | --- | --- | --- | --- | --- |
 | Caddy | `caddy` | `2.11.7-alpine` | `sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f` | Caddy release and Docker Hub official image |
-| Jellyfin | `jellyfin/jellyfin` | `12.3` | `sha256:2038fe038ab3876a80f6e7b7e0aef6607b032c7dc0c9b3ad3296d0b2eba3bbb5` | Jellyfin release and Docker Hub official image |
+| Jellyfin | `jellyfin/jellyfin` | `10.11.11` | `sha256:aefb67e6a7ff1debdd154a78a7bbb780fd0c873d8639210a7f6a2016ad2b35db` | Jellyfin release and Docker Hub official image |
 | qBittorrent | `lscr.io/linuxserver/qbittorrent` | `5.3.0_v2.1.2-ls484` | `sha256:e887804fa9de4c60f5f0fb1f3a7e4febe40a8f69fe736f70c4e8589b1f868dab` | LinuxServer registry image labels and manifest |
 | Sonarr | `lscr.io/linuxserver/sonarr` | `4.0.20.3014-ls1` | `sha256:889dcc58c6aea859033985894b519b2e6b1e55d92527ed123f9f52e42ae7c97b` | LinuxServer registry image labels and manifest |
 | Radarr | `lscr.io/linuxserver/radarr` | `6.4.4.10685-ls323` | `sha256:fc0ae3c50f8128b97e84381903ec8d6845c3a569641cb7117c124376cccb57c1` | LinuxServer registry image labels and manifest |
@@ -27,7 +27,7 @@ The panel base was verified on 2026-10-24. Control panel setup performs two inde
 Official release sources reviewed on 2026-10-23:
 
 - [Caddy releases](https://github.com/caddyserver/caddy/releases) and [Docker Official Image tags](https://hub.docker.com/_/caddy/tags)
-- [Jellyfin 12.3 release](https://github.com/jellyfin/jellyfin/releases/tag/v12.3) and [official container tags](https://hub.docker.com/r/jellyfin/jellyfin/tags)
+- [Jellyfin 10.11.11 release](https://github.com/jellyfin/jellyfin/releases/tag/v10.11.11) and [official container tags](https://hub.docker.com/r/jellyfin/jellyfin/tags)
 - LinuxServer releases for [qBittorrent](https://github.com/linuxserver/docker-qbittorrent/releases), [Sonarr](https://github.com/linuxserver/docker-sonarr/releases), [Radarr](https://github.com/linuxserver/docker-radarr/releases), [Prowlarr](https://github.com/linuxserver/docker-prowlarr/releases), and [Bazarr](https://github.com/linuxserver/docker-bazarr/releases), with manifests from the official LinuxServer registry
 - [Seerr releases](https://github.com/seerr-team/seerr/releases), [Recyclarr releases](https://github.com/recyclarr/recyclarr/releases), and [FlareSolverr releases](https://github.com/FlareSolverr/FlareSolverr/releases), with manifests from each project's official GHCR namespace
 

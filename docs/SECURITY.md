@@ -40,7 +40,7 @@ Noninteractive `--input` and `--set` accept non-secret settings only. They rejec
 
 Container networks and volumes are scoped to actual service needs. Media access follows the matrix in [ARCHITECTURE.md](ARCHITECTURE.md). The control panel has no Docker socket. Its separate unexposed agent validates a compiled service allowlist plus runtime Compose labels and permits only status, stats, start, stop, and restart. Neither component can manage itself, and no arbitrary Docker endpoint is proxied.
 
-Third-party Jellyfin Web modifications require review, pinned releases, staged compatibility testing, and rollback documentation. Who's Watching did not pass that acceptance process and remains experimental, disabled by default, not deployed, and unsupported.
+Third-party Jellyfin modifications require review, pinned releases, archive and extracted-file hashes, staged compatibility testing, and protected rollback. Only entries in `config/plugins.lock` plus the exact `config/legacy-ui-assets.lock` asset are supported; the installer accepts no arbitrary repository URL. The supported legacy UI deliberately uses reviewed Jellyfin Web transformation and local script injection, blocks external script URLs, and documents its increased security and upgrade risk. Who's Watching remains excluded and unsupported.
 
 ## Storage safety
 

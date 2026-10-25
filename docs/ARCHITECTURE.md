@@ -67,7 +67,7 @@ The planned configuration uses the same `/data` mapping across download and libr
 
 ## Plugins and extensions
 
-Third-party Jellyfin plugins must be reviewed, pinned, installed only through an explicitly approved workflow, validated for compatibility, and documented for rollback. Plugins that alter Jellyfin Web will not be enabled blindly together. Who's Watching was evaluated and deferred because its browser authentication and session integration could not be validated reliably. Its reviewed material is experimental, disabled by default, and excluded from the supported feature set.
+Third-party Jellyfin plugins must be reviewed, pinned, installed only through the named supported-plugin component, validated for compatibility, and documented for rollback. Jellyfin Enhanced, Intro Skipper, and AniList are the current immutable allowlist. Plugins that depend on unrestricted injection or direct Jellyfin Web modification remain disabled. Who's Watching was evaluated and deferred because its browser authentication and session integration could not be validated reliably. Its reviewed material is experimental, disabled by default, and excluded from the supported feature set.
 
 The requested Jellyfin catalog is Who's Watching, AniList, AniSearch, AudioDB, Custom Tabs, File Transformation, Home Screen Sections, HoverTrailer, InPlayerEpisodePreview, Intro Skipper, JavaScript Injector, Jellyfin Enhanced, Local Posters, Media Bar Enhanced, MusicBrainz, OMDb, Studio Images, TMDb, and KefinTweaks. Inclusion in this historical catalog does not mean a plugin is installed, compatible, approved, or supported; Who's Watching is explicitly deferred.
 

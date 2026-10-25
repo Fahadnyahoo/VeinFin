@@ -1,0 +1,73 @@
+:root {
+  --veinfin-cinematic-bg: #080b12;
+  --veinfin-cinematic-panel: rgba(13, 17, 27, .78);
+  --veinfin-cinematic-accent: #8b5cf6;
+}
+
+html, body, .backgroundContainer, .dialog, .mainDrawer {
+  background-color: var(--veinfin-cinematic-bg) !important;
+}
+
+.backgroundContainer {
+  background-image: radial-gradient(circle at 80% 0, rgba(76, 29, 149, .22), transparent 38%),
+                    linear-gradient(180deg, #0b0f19 0, #080b12 72%) !important;
+}
+
+.skinHeader.semiTransparent, .skinHeader-withBackground {
+  background: linear-gradient(180deg, rgba(8, 11, 18, .94), rgba(8, 11, 18, .72), transparent) !important;
+  backdrop-filter: blur(18px);
+}
+
+#slides-container, .spotlight-section {
+  min-height: clamp(25rem, 58vh, 48rem);
+}
+
+.spotlight-image, .spotlight-backdrop {
+  mask-image: linear-gradient(90deg, transparent 0, #000 30%, #000 78%, transparent 100%);
+}
+
+.spotlight-content, .spotlight-details {
+  max-width: min(42rem, 82vw);
+  text-shadow: 0 2px 18px #000;
+}
+
+.cardBox {
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.cardBox:hover, .cardBox:focus-within {
+  transform: translateY(-.35rem) scale(1.035);
+  filter: drop-shadow(0 1rem 1.5rem rgba(0, 0, 0, .5));
+  z-index: 3;
+}
+
+.cardImageContainer, .cardContent, .visualCardBox {
+  border-radius: .8rem !important;
+  overflow: hidden;
+}
+
+.cardText, .sectionTitle, .itemName {
+  letter-spacing: .01em;
+}
+
+.raised, .fab, .button-submit, .detailButton-primary {
+  border-radius: 999px !important;
+}
+
+.detailPagePrimaryContainer, .detailPageContent {
+  background: linear-gradient(0deg, var(--veinfin-cinematic-bg) 25%, transparent 100%);
+}
+
+.detailPageWrapperContainer {
+  backdrop-filter: saturate(1.1);
+}
+
+@media (max-width: 50em) {
+  #slides-container, .spotlight-section { min-height: 27rem; }
+  .spotlight-content, .spotlight-details { max-width: 92vw; }
+  .cardBox:hover, .cardBox:focus-within { transform: translateY(-.15rem) scale(1.015); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardBox { transition: none; }
+}

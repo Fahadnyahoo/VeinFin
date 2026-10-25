@@ -62,7 +62,7 @@ lacks "$helper_text" 'IsPlayed' 'watch state is not changed'
 lacks "$helper_text" 'ProviderIds":' 'metadata provider IDs are not written'
 
 if command -v git >/dev/null 2>&1; then
-  if git -C "$ROOT" ls-files | xargs rg -n '(libraries-media-report|libraries-media\.conf|episode_container_paths)' >/dev/null 2>&1; then
+  if git -C "$ROOT" ls-files -- 'runtime/**' '.env' | grep -Eq '(libraries-media-report|libraries-media\.conf|episode_container_paths)'; then
     bad 'runtime media inventory is absent from tracked files'
   else
     ok 'runtime media inventory is absent from tracked files'

@@ -223,13 +223,13 @@ snapshot_listeners() { ss -H -lntu | awk '{print $1,$5}' | sort -u; }
 record_baselines() {
   local listeners=$RUNTIME_ROOT/state/media_services-listeners-before.txt rsync=$RUNTIME_ROOT/state/media_services-rsync-before.txt
   if [ ! -e "$listeners" ]; then snapshot_listeners | vf_atomic_write "$listeners" 0600; chown root:root "$listeners"; fi
-  if [ ! -e "$rsync" ]; then ps -C rsync -o pid=,lstart=,comm= | sed 's/^[[:space:]]*//' | vf_atomic_write "$rsync" 0600; chown root:root "$rsync"; fi
+  if [ ! -e "$rsync" ]; then { ps -C rsync -o pid=,lstart=,comm= || true; } | sed 's/^[[:space:]]*//' | vf_atomic_write "$rsync" 0600; chown root:root "$rsync"; fi
 }
 verify_baselines() {
   local baseline=$RUNTIME_ROOT/state/media_services-listeners-before.txt current=$WORK_DIR/listeners rsync=$WORK_DIR/rsync
   snapshot_listeners | awk '$0!="tcp 127.0.0.1:6767"&&$0!="tcp 127.0.0.1:5055"' >"$current"
   cmp -s "$baseline" "$current" || die "unexpected host listener change"
-  ps -C rsync -o pid=,lstart=,comm= | sed 's/^[[:space:]]*//' >"$rsync"
+  { ps -C rsync -o pid=,lstart=,comm= || true; } | sed 's/^[[:space:]]*//' >"$rsync"
   cmp -s "$RUNTIME_ROOT/state/media_services-rsync-before.txt" "$rsync" || die "external rsync process identity changed"
   pass "listener delta is exact and active rsync identities are untouched"
 }
@@ -292,10 +292,13 @@ validate_recyclarr() {
 
 write_credential_status() {
   {
-    printf 'VeinFin credential status (no secret values)\n'
-    printf 'Management credential: preserved in its dedicated protected file.\n'
+    printf 'VeinFin local credential summary\n'
+    printf 'Generated for local administrative use. No Visit URL contains credentials.\n\n'
+    printf 'Management username: %s\n' "$MANAGEMENT_USERNAME"
+    printf 'Management password: %s\n' "$(tr -d '\r\n' <"$RUNTIME_ROOT/secrets/management-password")"
+    printf 'Applied use: qBittorrent, Sonarr, Radarr, Prowlarr, Jellyfin, Bazarr, and Seerr.\n'
     printf 'Application API keys: five unique protected files are present.\n'
-    printf 'Media services: configured and verified; no credentials are embedded in URLs.\n'
+    printf 'No credentials are embedded in Visit URLs.\n'
   } | vf_atomic_write "$RUNTIME_ROOT/secrets/credentials-summary.txt" 0600
   chown root:root "$RUNTIME_ROOT/secrets/credentials-summary.txt"
 }

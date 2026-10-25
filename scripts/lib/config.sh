@@ -13,6 +13,8 @@ vf_assign_setting() {
   vf_safe_scalar "$vf_value" || vf_die "$vf_key contains a control character"
 
   case "$vf_key" in
+    INSTALLATION_PROFILE) INSTALLATION_PROFILE=$vf_value ;;
+    ENABLE_MIGRATION_STAGES) ENABLE_MIGRATION_STAGES=$vf_value ;;
     COMPOSE_PROJECT_NAME) COMPOSE_PROJECT_NAME=$vf_value ;;
     TZ) TZ=$vf_value ;;
     PUID) PUID=$vf_value ;;
@@ -38,11 +40,14 @@ vf_assign_setting() {
     BAZARR_MANAGEMENT_PORT) BAZARR_MANAGEMENT_PORT=$vf_value ;;
     SEERR_MANAGEMENT_PORT) SEERR_MANAGEMENT_PORT=$vf_value ;;
     CONTROL_PANEL_MANAGEMENT_PORT) CONTROL_PANEL_MANAGEMENT_PORT=$vf_value ;;
+    JELLYFIN_MANAGEMENT_PORT) JELLYFIN_MANAGEMENT_PORT=$vf_value ;;
     ENABLE_JELLYFIN_DISCOVERY) ENABLE_JELLYFIN_DISCOVERY=$vf_value ;;
     JELLYFIN_DISCOVERY_BIND_IP) JELLYFIN_DISCOVERY_BIND_IP=$vf_value ;;
     JELLYFIN_DISCOVERY_PORT) JELLYFIN_DISCOVERY_PORT=$vf_value ;;
     CADDY_IMAGE_TAG) CADDY_IMAGE_TAG=$vf_value ;;
     JELLYFIN_IMAGE_TAG) JELLYFIN_IMAGE_TAG=$vf_value ;;
+    LEGACY_CANDIDATE_ROOT) LEGACY_CANDIDATE_ROOT=$vf_value ;;
+    LEGACY_CANDIDATE_PORT) LEGACY_CANDIDATE_PORT=$vf_value ;;
     QBITTORRENT_IMAGE_TAG) QBITTORRENT_IMAGE_TAG=$vf_value ;;
     SONARR_IMAGE_TAG) SONARR_IMAGE_TAG=$vf_value ;;
     RADARR_IMAGE_TAG) RADARR_IMAGE_TAG=$vf_value ;;
@@ -66,6 +71,7 @@ vf_assign_setting() {
 
 vf_value_by_name() {
   case "$1" in
+    ENABLE_MIGRATION_STAGES) printf '%s\n' "$ENABLE_MIGRATION_STAGES" ;;
     HTTPS_PORT) printf '%s\n' "$HTTPS_PORT" ;;
     QBITTORRENT_MANAGEMENT_PORT) printf '%s\n' "$QBITTORRENT_MANAGEMENT_PORT" ;;
     SONARR_MANAGEMENT_PORT) printf '%s\n' "$SONARR_MANAGEMENT_PORT" ;;
@@ -75,6 +81,8 @@ vf_value_by_name() {
     SEERR_MANAGEMENT_PORT) printf '%s\n' "$SEERR_MANAGEMENT_PORT" ;;
     CONTROL_PANEL_MANAGEMENT_PORT) printf '%s\n' "$CONTROL_PANEL_MANAGEMENT_PORT" ;;
     JELLYFIN_DISCOVERY_PORT) printf '%s\n' "$JELLYFIN_DISCOVERY_PORT" ;;
+    JELLYFIN_MANAGEMENT_PORT) printf '%s\n' "$JELLYFIN_MANAGEMENT_PORT" ;;
+    LEGACY_CANDIDATE_PORT) printf '%s\n' "$LEGACY_CANDIDATE_PORT" ;;
     ENABLE_JELLYFIN_DISCOVERY) printf '%s\n' "$ENABLE_JELLYFIN_DISCOVERY" ;;
     ENABLE_VPN_PROFILE) printf '%s\n' "$ENABLE_VPN_PROFILE" ;;
     ENABLE_HARDWARE_TRANSCODING) printf '%s\n' "$ENABLE_HARDWARE_TRANSCODING" ;;
@@ -231,9 +239,14 @@ vf_validate_image_pins() {
 }
 
 vf_validate_config() {
+  [ "$INSTALLATION_PROFILE" = public-https ] || [ "$INSTALLATION_PROFILE" = lan-only ] || { vf_error "INSTALLATION_PROFILE must be public-https or lan-only"; return 1; }
   [[ "$COMPOSE_PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { vf_error "COMPOSE_PROJECT_NAME must use lowercase letters, digits, hyphens, or underscores and start with a letter or digit"; return 1; }
-  vf_valid_hostname "$PUBLIC_HOSTNAME" || { vf_error "PUBLIC_HOSTNAME must be a valid fully qualified hostname"; return 1; }
-  [[ "$PUBLIC_HOSTNAME" != *.example.test ]] || { vf_error "PUBLIC_HOSTNAME still contains the documentation placeholder"; return 1; }
+  if [ "$INSTALLATION_PROFILE" = public-https ]; then
+    vf_valid_hostname "$PUBLIC_HOSTNAME" || { vf_error "PUBLIC_HOSTNAME must be a valid fully qualified hostname for public-https"; return 1; }
+    [[ "$PUBLIC_HOSTNAME" != *.example.test ]] || { vf_error "PUBLIC_HOSTNAME still contains the documentation placeholder"; return 1; }
+  else
+    [ "$PUBLIC_BIND_IP" = 127.0.0.1 ] || [ "$PUBLIC_BIND_IP" = ::1 ] || { vf_error "PUBLIC_BIND_IP must be loopback for lan-only"; return 1; }
+  fi
   vf_valid_ip "$PUBLIC_BIND_IP" || { vf_error "PUBLIC_BIND_IP must be a valid IPv4 or IPv6 address"; return 1; }
   vf_valid_ip "$MANAGEMENT_BIND_IP" || { vf_error "MANAGEMENT_BIND_IP must be a valid IPv4 or IPv6 address"; return 1; }
   [ "$MANAGEMENT_BIND_IP" != 0.0.0.0 ] && [ "$MANAGEMENT_BIND_IP" != :: ] || { vf_error "MANAGEMENT_BIND_IP must be a specific address, not a wildcard"; return 1; }
@@ -255,25 +268,26 @@ vf_validate_config() {
   vf_valid_path "$CONFIG_ROOT" || { vf_error "CONFIG_ROOT must be a safe absolute path other than /"; return 1; }
   vf_valid_path "$MEDIA_ROOT" || { vf_error "MEDIA_ROOT must be a safe absolute path other than /"; return 1; }
   vf_valid_path "$RUNTIME_ROOT" || { vf_error "RUNTIME_ROOT must be a safe absolute path other than /"; return 1; }
+  vf_valid_path "$LEGACY_CANDIDATE_ROOT" || { vf_error "LEGACY_CANDIDATE_ROOT must be a safe absolute path other than /"; return 1; }
   [ "$CONFIG_ROOT" != "$MEDIA_ROOT" ] || { vf_error "CONFIG_ROOT and MEDIA_ROOT must differ"; return 1; }
   [[ "$MANAGEMENT_USERNAME" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { vf_error "MANAGEMENT_USERNAME has invalid syntax"; return 1; }
   [ "$MANAGEMENT_URL_SCHEME" = http ] || [ "$MANAGEMENT_URL_SCHEME" = https ] || { vf_error "MANAGEMENT_URL_SCHEME must be http or https"; return 1; }
   [ -z "$VPN_PROVIDER" ] || [[ "$VPN_PROVIDER" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || { vf_error "VPN_PROVIDER has invalid syntax"; return 1; }
 
-  for vf_port_name in HTTPS_PORT QBITTORRENT_MANAGEMENT_PORT SONARR_MANAGEMENT_PORT RADARR_MANAGEMENT_PORT PROWLARR_MANAGEMENT_PORT BAZARR_MANAGEMENT_PORT SEERR_MANAGEMENT_PORT CONTROL_PANEL_MANAGEMENT_PORT JELLYFIN_DISCOVERY_PORT; do
+  for vf_port_name in HTTPS_PORT QBITTORRENT_MANAGEMENT_PORT SONARR_MANAGEMENT_PORT RADARR_MANAGEMENT_PORT PROWLARR_MANAGEMENT_PORT BAZARR_MANAGEMENT_PORT SEERR_MANAGEMENT_PORT CONTROL_PANEL_MANAGEMENT_PORT JELLYFIN_MANAGEMENT_PORT JELLYFIN_DISCOVERY_PORT LEGACY_CANDIDATE_PORT; do
     vf_port_value=$(vf_value_by_name "$vf_port_name")
     vf_valid_port "$vf_port_value" || { vf_error "$vf_port_name must be between 1 and 65535"; return 1; }
   done
 
-  vf_management_ports=$(printf '%s\n' "$QBITTORRENT_MANAGEMENT_PORT" "$SONARR_MANAGEMENT_PORT" "$RADARR_MANAGEMENT_PORT" "$PROWLARR_MANAGEMENT_PORT" "$BAZARR_MANAGEMENT_PORT" "$SEERR_MANAGEMENT_PORT")
-  [ "$(printf '%s\n' "$vf_management_ports" | sort -u | wc -l | tr -d ' ')" = 6 ] || { vf_error "management TCP host ports must be unique"; return 1; }
+  vf_management_ports=$(printf '%s\n' "$QBITTORRENT_MANAGEMENT_PORT" "$SONARR_MANAGEMENT_PORT" "$RADARR_MANAGEMENT_PORT" "$PROWLARR_MANAGEMENT_PORT" "$BAZARR_MANAGEMENT_PORT" "$SEERR_MANAGEMENT_PORT" "$CONTROL_PANEL_MANAGEMENT_PORT" "$JELLYFIN_MANAGEMENT_PORT")
+  [ "$(printf '%s\n' "$vf_management_ports" | sort -u | wc -l | tr -d ' ')" = 8 ] || { vf_error "management TCP host ports must be unique"; return 1; }
   if printf '%s\n' "$vf_management_ports" | grep -qx "$HTTPS_PORT"; then
     case "$PUBLIC_BIND_IP" in
       0.0.0.0|::|"$MANAGEMENT_BIND_IP") vf_error "HTTPS_PORT conflicts with a management port on an overlapping bind address"; return 1 ;;
     esac
   fi
 
-  for vf_bool_name in ENABLE_JELLYFIN_DISCOVERY ENABLE_VPN_PROFILE ENABLE_HARDWARE_TRANSCODING; do
+  for vf_bool_name in ENABLE_MIGRATION_STAGES ENABLE_JELLYFIN_DISCOVERY ENABLE_VPN_PROFILE ENABLE_HARDWARE_TRANSCODING; do
     vf_bool_value=$(vf_value_by_name "$vf_bool_name")
     [ "$vf_bool_value" = true ] || [ "$vf_bool_value" = false ] || { vf_error "$vf_bool_name must be true or false"; return 1; }
   done
@@ -328,14 +342,15 @@ vf_generate_or_load_secrets() {
 vf_write_env() {
   {
     printf '# Generated by VeinFin. Contains secrets; mode 0600.\n'
+    printf 'INSTALLATION_PROFILE=%s\nENABLE_MIGRATION_STAGES=%s\n' "$INSTALLATION_PROFILE" "$ENABLE_MIGRATION_STAGES"
     printf 'COMPOSE_PROJECT_NAME=%s\n' "$COMPOSE_PROJECT_NAME"
     printf 'TZ=%s\nPUID=%s\nPGID=%s\nUMASK=%s\n' "$TZ" "$PUID" "$PGID" "$UMASK"
     printf 'CONFIG_ROOT=%s\nMEDIA_ROOT=%s\nRUNTIME_ROOT=%s\n' "$CONFIG_ROOT" "$MEDIA_ROOT" "$RUNTIME_ROOT"
     printf 'PUBLIC_HOSTNAME=%s\nPUBLIC_BIND_IP=%s\nHTTPS_PORT=%s\n' "$PUBLIC_HOSTNAME" "$PUBLIC_BIND_IP" "$HTTPS_PORT"
     printf 'MANAGEMENT_BIND_IP=%s\nMANAGEMENT_URL_SCHEME=%s\nMANAGEMENT_URL_HOST=%s\nMANAGEMENT_ALLOWED_CIDRS=%s\nPROTECTED_LAN_CIDRS=%s\nSSH_PORT=%s\nMANAGEMENT_USERNAME=%s\n' "$MANAGEMENT_BIND_IP" "$MANAGEMENT_URL_SCHEME" "$MANAGEMENT_URL_HOST" "$MANAGEMENT_ALLOWED_CIDRS" "$PROTECTED_LAN_CIDRS" "$SSH_PORT" "$MANAGEMENT_USERNAME"
-    printf 'QBITTORRENT_MANAGEMENT_PORT=%s\nSONARR_MANAGEMENT_PORT=%s\nRADARR_MANAGEMENT_PORT=%s\nPROWLARR_MANAGEMENT_PORT=%s\nBAZARR_MANAGEMENT_PORT=%s\nSEERR_MANAGEMENT_PORT=%s\nCONTROL_PANEL_MANAGEMENT_PORT=%s\n' "$QBITTORRENT_MANAGEMENT_PORT" "$SONARR_MANAGEMENT_PORT" "$RADARR_MANAGEMENT_PORT" "$PROWLARR_MANAGEMENT_PORT" "$BAZARR_MANAGEMENT_PORT" "$SEERR_MANAGEMENT_PORT" "$CONTROL_PANEL_MANAGEMENT_PORT"
+    printf 'QBITTORRENT_MANAGEMENT_PORT=%s\nSONARR_MANAGEMENT_PORT=%s\nRADARR_MANAGEMENT_PORT=%s\nPROWLARR_MANAGEMENT_PORT=%s\nBAZARR_MANAGEMENT_PORT=%s\nSEERR_MANAGEMENT_PORT=%s\nCONTROL_PANEL_MANAGEMENT_PORT=%s\nJELLYFIN_MANAGEMENT_PORT=%s\n' "$QBITTORRENT_MANAGEMENT_PORT" "$SONARR_MANAGEMENT_PORT" "$RADARR_MANAGEMENT_PORT" "$PROWLARR_MANAGEMENT_PORT" "$BAZARR_MANAGEMENT_PORT" "$SEERR_MANAGEMENT_PORT" "$CONTROL_PANEL_MANAGEMENT_PORT" "$JELLYFIN_MANAGEMENT_PORT"
     printf 'ENABLE_JELLYFIN_DISCOVERY=%s\nJELLYFIN_DISCOVERY_BIND_IP=%s\nJELLYFIN_DISCOVERY_PORT=%s\n' "$ENABLE_JELLYFIN_DISCOVERY" "$JELLYFIN_DISCOVERY_BIND_IP" "$JELLYFIN_DISCOVERY_PORT"
-    printf 'CADDY_IMAGE_TAG=%s\nJELLYFIN_IMAGE_TAG=%s\nQBITTORRENT_IMAGE_TAG=%s\nSONARR_IMAGE_TAG=%s\nRADARR_IMAGE_TAG=%s\nPROWLARR_IMAGE_TAG=%s\nBAZARR_IMAGE_TAG=%s\nSEERR_IMAGE_TAG=%s\nRECYCLARR_IMAGE_TAG=%s\nFLARESOLVERR_IMAGE_TAG=%s\n' "$CADDY_IMAGE_TAG" "$JELLYFIN_IMAGE_TAG" "$QBITTORRENT_IMAGE_TAG" "$SONARR_IMAGE_TAG" "$RADARR_IMAGE_TAG" "$PROWLARR_IMAGE_TAG" "$BAZARR_IMAGE_TAG" "$SEERR_IMAGE_TAG" "$RECYCLARR_IMAGE_TAG" "$FLARESOLVERR_IMAGE_TAG"
+    printf 'CADDY_IMAGE_TAG=%s\nJELLYFIN_IMAGE_TAG=%s\nLEGACY_CANDIDATE_ROOT=%s\nLEGACY_CANDIDATE_PORT=%s\nQBITTORRENT_IMAGE_TAG=%s\nSONARR_IMAGE_TAG=%s\nRADARR_IMAGE_TAG=%s\nPROWLARR_IMAGE_TAG=%s\nBAZARR_IMAGE_TAG=%s\nSEERR_IMAGE_TAG=%s\nRECYCLARR_IMAGE_TAG=%s\nFLARESOLVERR_IMAGE_TAG=%s\n' "$CADDY_IMAGE_TAG" "$JELLYFIN_IMAGE_TAG" "$LEGACY_CANDIDATE_ROOT" "$LEGACY_CANDIDATE_PORT" "$QBITTORRENT_IMAGE_TAG" "$SONARR_IMAGE_TAG" "$RADARR_IMAGE_TAG" "$PROWLARR_IMAGE_TAG" "$BAZARR_IMAGE_TAG" "$SEERR_IMAGE_TAG" "$RECYCLARR_IMAGE_TAG" "$FLARESOLVERR_IMAGE_TAG"
     printf 'ENABLE_VPN_PROFILE=%s\nVPN_PROVIDER=%s\nENABLE_HARDWARE_TRANSCODING=%s\nTRANSCODING_DEVICE=%s\n' "$ENABLE_VPN_PROFILE" "$VPN_PROVIDER" "$ENABLE_HARDWARE_TRANSCODING" "$TRANSCODING_DEVICE"
     printf 'MANAGEMENT_PASSWORD=%s\n' "$MANAGEMENT_PASSWORD"
   } | vf_atomic_write "$VEINFIN_ENV_FILE" 0600
@@ -346,7 +361,11 @@ vf_render_templates() {
 
   {
     printf '# Generated non-secret endpoint contract.\n'
-    printf 'JELLYFIN_PUBLIC_URL=https://%s\n' "$PUBLIC_HOSTNAME"
+    if [ "$INSTALLATION_PROFILE" = public-https ]; then
+      printf 'JELLYFIN_PUBLIC_URL=https://%s\n' "$PUBLIC_HOSTNAME"
+    else
+      printf 'JELLYFIN_PUBLIC_URL=http://%s:%s\n' "$MANAGEMENT_URL_HOST" "$JELLYFIN_MANAGEMENT_PORT"
+    fi
     printf 'JELLYFIN_INTERNAL_URL=http://jellyfin:8096\n'
     printf 'QBITTORRENT_INTERNAL_URL=http://qbittorrent:8080\n'
     printf 'SONARR_INTERNAL_URL=http://sonarr:8989\n'
@@ -387,10 +406,10 @@ vf_write_credentials_summary() {
   {
     printf 'VeinFin local credential summary\n'
     printf 'Generated for local administrative use. No Visit URL contains credentials.\n'
-    printf 'Status: not yet applied; deployment and verified bootstrap are not implemented.\n\n'
+    printf 'Status: not yet applied; deployment and verified bootstrap have not run.\n\n'
     printf 'Management username: %s\n' "$MANAGEMENT_USERNAME"
     printf 'Management password: %s\n' "$MANAGEMENT_PASSWORD"
     printf 'Intended use: shared local management login, including qBittorrent where supported.\n'
-    printf 'Jellyfin viewer accounts and application API keys are separate and are not created here.\n'
+    printf 'Application API keys and control-panel secrets are created only by their verified installation stages.\n'
   } | vf_atomic_write "$RUNTIME_ROOT/secrets/credentials-summary.txt" 0600
 }

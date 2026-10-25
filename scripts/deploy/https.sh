@@ -74,7 +74,7 @@ require_root() { [ "$EUID" -eq 0 ] || die "$1 must run as root (use sudo)"; }
 compose_cmd() {
   docker_cmd compose --project-directory "$REPO_ROOT" --env-file "$ENV_FILE" \
     -f "$BASE_COMPOSE" -f "$JELLYFIN_LOOPBACK" -f "$QBITTORRENT_LOOPBACK" \
-    -f "$ARR_LOOPBACK" -f "$MEDIA_SERVICES_LOOPBACK" "$@"
+    -f "$ARR_LOOPBACK" -f "$MEDIA_SERVICES_LOOPBACK" --profile public-https "$@"
 }
 env_value() { as_root awk -F= -v key="$1" '$1==key{n++;v=substr($0,index($0,"=")+1)}END{if(n!=1)exit 1;print v}' "$ENV_FILE"; }
 service_id() { docker_cmd ps -aq --filter "label=com.docker.compose.project=$PROJECT_NAME" --filter "label=com.docker.compose.service=$1"; }

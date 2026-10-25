@@ -63,6 +63,10 @@ validate_ssh_context(){
 enter_privileged(){ validate_ssh_context; if [ "$(effective_uid)" -ne 0 ]; then exec "$SUDO_BIN" --preserve-env=SSH_CONNECTION "$SCRIPT_DIR/control-panel.sh" "$@"; fi; }
 docker_cmd(){ docker "$@"; }
 env_value(){ awk -F= -v key="$1" '$1==key{n++;v=substr($0,index($0,"=")+1)}END{if(n!=1)exit 1;print v}' "$REPO_ROOT/.env"; }
+is_lan_only(){ [ "$(env_value INSTALLATION_PROFILE)" = lan-only ]; }
+protected_services(){
+  if is_lan_only; then printf '%s\n' jellyfin qbittorrent sonarr radarr prowlarr bazarr seerr flaresolverr; else printf '%s\n' reverse-proxy jellyfin qbittorrent sonarr radarr prowlarr bazarr seerr flaresolverr; fi
+}
 service_id(){ docker_cmd ps -aq --filter "label=com.docker.compose.project=$(env_value COMPOSE_PROJECT_NAME)" --filter "label=com.docker.compose.service=$1"; }
 fingerprint(){ docker_cmd inspect --format '{{.Id}}|{{.State.StartedAt}}|{{.RestartCount}}' "$1"; }
 
@@ -71,17 +75,28 @@ require_commands(){ local command; for command in awk cmp curl docker find findm
 check_preflight(){
   require_commands
   [ -f "$REPO_ROOT/.env" ] && [ "$(file_mode "$REPO_ROOT/.env")" = 600 ] || die ".env is missing or unsafe"
-  "$SCRIPT_DIR/download-lifecycle.sh" --verify >/dev/null || die "Download lifecycle setup verification failed"
-  local service id
-  for service in reverse-proxy jellyfin qbittorrent sonarr radarr prowlarr bazarr seerr flaresolverr; do
+  if ! is_lan_only; then "$SCRIPT_DIR/download-lifecycle.sh" --verify >/dev/null || die "Download lifecycle setup verification failed"; fi
+  local service id attempt status
+  for service in $(protected_services); do
     id=$(service_id "$service"); [ -n "$id" ] || die "$service is absent"
-    [ "$(docker inspect --format '{{.State.Running}}|{{.State.Health.Status}}|{{.RestartCount}}' "$id")" = true\|healthy\|0 ] || die "$service is not healthy with zero restarts"
+    attempt=0; status=
+    while [ "$attempt" -lt 60 ]; do
+      status=$(docker inspect --format '{{.State.Running}}|{{.State.Health.Status}}|{{.RestartCount}}' "$id")
+      [ "$status" = true\|healthy\|0 ] && break
+      case "$status" in
+        true\|starting\|0) sleep 2 ;;
+        *) break ;;
+      esac
+      attempt=$((attempt + 1))
+    done
+    [ "$status" = true\|healthy\|0 ] || die "$service is not healthy with zero restarts"
   done
-  [ "$(docker ps -q | awk 'NF{n++}END{print n+0}')" -eq 9 ] || [ -f "$MARKER" ] || die "expected nine pre-panel long-running containers"
+  expected=9; is_lan_only && expected=8
+  [ "$(docker ps -q | awk 'NF{n++}END{print n+0}')" -eq "$expected" ] || [ -f "$MARKER" ] || die "unexpected pre-panel container count"
   findmnt -T "$(env_value MEDIA_ROOT)" >/dev/null || die "media root is not mounted"
   [ -w "$(env_value MEDIA_ROOT)" ] || die "media root is not writable"
   [ ! -e "$(env_value MEDIA_ROOT)/torrents/.veinfin-control_panel-validation" ] || die "unexpected validation artifact exists"
-  pass "zero-torrent Download lifecycle setup state, containers, media, firewall, and HTTPS are ready"
+  pass "zero-torrent core state, containers, media, firewall, and selected exposure profile are ready"
 }
 
 record_backup(){
@@ -90,7 +105,7 @@ record_backup(){
     install -o root -g root -m 0600 "$REPO_ROOT/.env" "$BACKUP/repository.env"
     install -o root -g root -m 0600 /etc/veinfin/firewall.conf "$BACKUP/firewall.conf"
     install -o root -g root -m 0755 "$FIREWALL_INSTALLED" "$BACKUP/veinfin-firewall"
-    { for service in reverse-proxy jellyfin qbittorrent sonarr radarr prowlarr bazarr seerr flaresolverr; do printf '%s=%s\n' "$service" "$(fingerprint "$(service_id "$service")")"; done; } | vf_atomic_write "$BACKUP/container-fingerprints" 0600
+    { for service in $(protected_services); do printf '%s=%s\n' "$service" "$(fingerprint "$(service_id "$service")")"; done; } | vf_atomic_write "$BACKUP/container-fingerprints" 0600
     printf 'schema=1\nmedia_included=false\n' | vf_atomic_write "$BACKUP/manifest" 0600
     chown root:root "$BACKUP"/*
   fi
@@ -154,7 +169,7 @@ for line in open(sys.argv[1],encoding='utf-8'):
  if '=' in line and not line.startswith('#'):
   k,v=line.rstrip('\n').split('=',1); values[k]=v
 host=sys.argv[2]; scheme=values.get('MANAGEMENT_URL_SCHEME','http')
-result={'jellyfin':'https://'+values['PUBLIC_HOSTNAME']}
+result={'jellyfin':('http://'+host+':'+values['JELLYFIN_MANAGEMENT_PORT']) if values['INSTALLATION_PROFILE']=='lan-only' else ('https://'+values['PUBLIC_HOSTNAME'])}
 for key,name in [('QBITTORRENT','qbittorrent'),('SONARR','sonarr'),('RADARR','radarr'),('PROWLARR','prowlarr'),('BAZARR','bazarr'),('SEERR','seerr')]:
  result[name]=f"{scheme}://{host}:{values[key+'_MANAGEMENT_PORT']}"
 print(json.dumps(result,separators=(',',':')))
@@ -176,7 +191,11 @@ PY
   chown root:root "$CONTROL_PANEL_ENV"
 }
 
-compose_cmd(){ docker compose --env-file "$REPO_ROOT/.env" --env-file "$CONTROL_PANEL_ENV" -f "$REPO_ROOT/compose.yaml" -f "$CONTROL_PANEL_COMPOSE" "$@"; }
+compose_cmd(){
+  local files=(-f "$REPO_ROOT/compose.yaml" -f "$CONTROL_PANEL_COMPOSE")
+  is_lan_only && files+=(-f "$REPO_ROOT/compose/lan-only.yaml")
+  docker compose --env-file "$REPO_ROOT/.env" --env-file "$CONTROL_PANEL_ENV" "${files[@]}" "$@"
+}
 
 update_panel_image_reference(){
   local image=${PANEL_IMAGE:-} temp
@@ -192,6 +211,11 @@ update_panel_image_reference(){
 
 verify_applications(){
   local media_path attempt
+  if is_lan_only; then
+    "$SCRIPT_DIR/arr_api.py" verify --config-root "$(env_value CONFIG_ROOT)" --secrets-root "$SECRETS" --username "$(env_value MANAGEMENT_USERNAME)" --password-file "$SECRETS/management-password" >/dev/null || return 1
+    "$SCRIPT_DIR/media_services_api.py" verify --config-root "$(env_value CONFIG_ROOT)" --secrets-root "$SECRETS" --username "$(env_value MANAGEMENT_USERNAME)" --password-file "$SECRETS/management-password" >/dev/null || return 1
+    return 0
+  fi
   media_path=$(awk -F= '$1=="HOST_SERIES_PATH"{print substr($0,index($0,"=")+1)}' "$STATE/sonarr_adoption-series.conf")
   attempt=0
   while [ "$attempt" -lt 30 ]; do
@@ -223,7 +247,7 @@ render_firewall_candidate(){
 
 verify_runtime(){
   local service id count attempt status
-  for service in reverse-proxy jellyfin qbittorrent sonarr radarr prowlarr bazarr seerr flaresolverr veinfin-panel veinfin-agent; do
+  for service in $(protected_services) veinfin-panel veinfin-agent; do
     id=$(service_id "$service"); [ -n "$id" ] || die "$service is absent"
     attempt=0; status=
     while [ "$attempt" -lt 60 ]; do
@@ -233,13 +257,14 @@ verify_runtime(){
     done
     [ "$status" = true\|healthy ] || die "$service is not healthy"
   done
-  count=$(docker ps -q | awk 'NF{n++}END{print n+0}'); [ "$count" -eq 11 ] || die "exactly eleven long-running containers are required"
+  expected=11; is_lan_only && expected=10
+  count=$(docker ps -q | awk 'NF{n++}END{print n+0}'); [ "$count" -eq "$expected" ] || die "unexpected long-running container count"
   [ -z "$(docker inspect --format '{{range .Mounts}}{{println .Source .Destination}}{{end}}' "$(service_id veinfin-panel)" | grep docker.sock || true)" ] || die "panel has Docker socket access"
   docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}{{.Destination}}{{end}}{{end}}' "$(service_id veinfin-agent)" | grep -qx /var/run/docker.sock || die "agent socket mount is absent"
   ! ss -H -lnt 'sport = :9000' | grep -q . || die "agent port is host-published"
   ! ss -H -lnt 'sport = :2375 or sport = :2376' | grep -q . || die "Docker TCP API is exposed"
   verify_applications || die "application/media preservation failed"
-  pass "eleven containers, restricted socket ownership, zero torrents, media, and public exposure are valid"
+  pass "containers, restricted socket ownership, zero torrents, media, and selected exposure profile are valid"
 }
 
 do_check(){ enter_privileged --check; check_preflight; [ ! -e "$STARTED" ] || die "an interrupted Control panel setup apply requires review"; pass "Control panel setup readiness check completed without changes"; }

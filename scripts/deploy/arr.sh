@@ -338,7 +338,7 @@ run_verify() {
 run_check() { run_checks; info "Read-only automation check passed; no persistent state changed"; }
 run_apply() {
   local before after
-  require_root "--apply"; run_checks; before=$(pgrep -x rsync | awk 'END{print NR+0}')
+  require_root "--apply"; run_checks; before=$({ pgrep -x rsync || true; } | awk 'END{print NR+0}')
   prepare_directories; record_preserved; record_listeners; validate_compose
   compose_cmd "$ENV_FILE" pull sonarr radarr prowlarr
   compose_cmd "$ENV_FILE" up -d --no-deps sonarr radarr prowlarr
@@ -346,7 +346,7 @@ run_apply() {
   if ! run_api apply; then warn "bootstrap failed; stopping only ARR deployment services"; compose_cmd "$ENV_FILE" stop sonarr radarr prowlarr >/dev/null 2>&1 || true; return 1; fi
   write_summary
   if ! run_verify; then warn "verification failed; stopping only ARR deployment services"; compose_cmd "$ENV_FILE" stop sonarr radarr prowlarr >/dev/null 2>&1 || true; return 1; fi
-  after=$(pgrep -x rsync | awk 'END{print NR+0}'); [ "$after" -eq "$before" ] || die "external rsync process count changed"
+  after=$({ pgrep -x rsync || true; } | awk 'END{print NR+0}'); [ "$after" -eq "$before" ] || die "external rsync process count changed"
   pass "automation deployment completed without changing existing services or the external copy"
 }
 

@@ -42,6 +42,7 @@ pass "shell syntax"
 "$INSTALLER" --help >"$TEST_TMP/help.log"
 grep -q -- '--generate-config' "$TEST_TMP/help.log" || fail "help omitted generate mode"
 grep -q -- '--rotate-secrets' "$TEST_TMP/help.log" || fail "help omitted rotation"
+grep -q -- '--profile' "$TEST_TMP/help.log" || fail "help omitted explicit installation profile"
 pass "installer help"
 
 for installer_source in "$REPO_DIR/install.sh" "$REPO_DIR/scripts/installer.sh" "$REPO_DIR"/scripts/lib/*.sh; do
@@ -49,18 +50,19 @@ for installer_source in "$REPO_DIR/install.sh" "$REPO_DIR/scripts/installer.sh" 
     fail "installer references experimental Who’s Watching material"
   fi
 done
-grep -Fq 'WHO_IS_WATCHING' "$REPO_DIR/config/plugins.lock" && fail "supported plugin lock contains deferred Who’s Watching"
+grep -Eiq 'Who.?s Watching|WhoIsWatching|whos_watching' "$REPO_DIR/config/plugins.lock" && fail "supported plugin lock contains deferred Who’s Watching"
+grep -q 'plugins)' "$REPO_DIR/scripts/installer.sh" || fail "supported plugin component is absent from installer"
 grep -Eiq 'Who.?s Watching|WhoIsWatching|plugin-installer' "$REPO_DIR/compose.yaml" && fail "default Compose enables plugin installation"
 pass "experimental plugins excluded from default installation"
 
 dry_root="$TEST_TMP/dry-root"
-"$INSTALLER" --dry-run --root "$dry_root" --set PUBLIC_HOSTNAME=media.test.invalid >"$TEST_TMP/dry.log" 2>&1
+"$INSTALLER" --dry-run --profile public-https --root "$dry_root" --set PUBLIC_HOSTNAME=media.test.invalid >"$TEST_TMP/dry.log" 2>&1
 [ ! -e "$dry_root" ] || fail "dry-run created output root"
 pass "dry-run safety"
 
 output_root="$TEST_TMP/output"
 test_media_root="$TEST_TMP/unmounted-media"
-"$INSTALLER" --generate-config --root "$output_root" --set PUBLIC_HOSTNAME=media.test.invalid --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/generate.log" 2>&1
+"$INSTALLER" --generate-config --profile public-https --root "$output_root" --set PUBLIC_HOSTNAME=media.test.invalid --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/generate.log" 2>&1
 [ -f "$output_root/.env" ] || fail "generation did not create .env"
 [ -f "$output_root/runtime/config/caddy/Caddyfile" ] || fail "generation did not render Caddy"
 [ -f "$output_root/runtime/generated/endpoints.env" ] || fail "generation did not render endpoints"
@@ -94,17 +96,17 @@ pass "unified pending credential contract"
 
 env_before=$(cksum "$output_root/.env")
 management_before=$(cksum "$output_root/runtime/secrets/management-password")
-"$INSTALLER" --generate-config --root "$output_root" --set PUBLIC_HOSTNAME=changed.test.invalid >"$TEST_TMP/repeat.log" 2>&1
+"$INSTALLER" --generate-config --profile public-https --root "$output_root" --set PUBLIC_HOSTNAME=changed.test.invalid >"$TEST_TMP/repeat.log" 2>&1
 [ "$env_before" = "$(cksum "$output_root/.env")" ] || fail "idempotent rerun overwrote .env"
 [ "$management_before" = "$(cksum "$output_root/runtime/secrets/management-password")" ] || fail "idempotent rerun changed a secret"
 pass "idempotent preservation"
 
-"$INSTALLER" --generate-config --force --root "$output_root" --set PUBLIC_HOSTNAME=changed.test.invalid --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/force.log" 2>&1
+"$INSTALLER" --generate-config --profile public-https --force --root "$output_root" --set PUBLIC_HOSTNAME=changed.test.invalid --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/force.log" 2>&1
 [ "$management_before" = "$(cksum "$output_root/runtime/secrets/management-password")" ] || fail "force changed a preserved secret"
 grep -q '^PUBLIC_HOSTNAME=changed.test.invalid$' "$output_root/.env" || fail "force did not update non-secret configuration"
 pass "force preserves existing secrets"
 
-"$INSTALLER" --generate-config --rotate-secrets --root "$output_root" --set PUBLIC_HOSTNAME=changed.test.invalid --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/rotate.log" 2>&1
+"$INSTALLER" --generate-config --profile public-https --rotate-secrets --root "$output_root" --set PUBLIC_HOSTNAME=changed.test.invalid --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/rotate.log" 2>&1
 [ "$management_before" != "$(cksum "$output_root/runtime/secrets/management-password")" ] || fail "explicit rotation did not change secret"
 pass "explicit secret rotation"
 
@@ -136,8 +138,9 @@ if find "$output_root" -name '*.tmp.*' -print | grep -q .; then
 fi
 pass "atomic generation cleanup"
 
-valid_base=("$INSTALLER" --dry-run --root "$TEST_TMP/invalid-cases" --set PUBLIC_HOSTNAME=valid.test.invalid)
-expect_failure "placeholder hostname" "$INSTALLER" --dry-run --root "$TEST_TMP/placeholder-case"
+valid_base=("$INSTALLER" --dry-run --profile public-https --root "$TEST_TMP/invalid-cases" --set PUBLIC_HOSTNAME=valid.test.invalid)
+expect_failure "missing explicit profile" "$INSTALLER" --dry-run --root "$TEST_TMP/missing-profile"
+expect_failure "placeholder hostname" "$INSTALLER" --dry-run --profile public-https --root "$TEST_TMP/placeholder-case"
 expect_failure "invalid hostname" "${valid_base[@]}" --set PUBLIC_HOSTNAME=bad_host
 expect_failure "invalid path" "${valid_base[@]}" --set MEDIA_ROOT=relative/path
 expect_failure "invalid port" "${valid_base[@]}" --set HTTPS_PORT=70000
@@ -155,20 +158,52 @@ expect_failure "carriage-return injection" "${valid_base[@]}" --set $'MANAGEMENT
 expect_failure "control-character injection" "${valid_base[@]}" --set $'MANAGEMENT_URL_HOST=localhost\tINJECTED=value'
 
 printf 'PUBLIC_HOSTNAME=input.test.invalid\000INJECTED=value\n' >"$TEST_TMP/nul.env"
-expect_failure "NUL input" "$INSTALLER" --dry-run --root "$TEST_TMP/nul-output" --input "$TEST_TMP/nul.env"
+expect_failure "NUL input" "$INSTALLER" --dry-run --profile public-https --root "$TEST_TMP/nul-output" --input "$TEST_TMP/nul.env"
 printf 'PUBLIC_HOSTNAME=input.test.invalid\r\n' >"$TEST_TMP/cr.env"
-expect_failure "carriage-return input" "$INSTALLER" --dry-run --root "$TEST_TMP/cr-output" --input "$TEST_TMP/cr.env"
+expect_failure "carriage-return input" "$INSTALLER" --dry-run --profile public-https --root "$TEST_TMP/cr-output" --input "$TEST_TMP/cr.env"
 
 input_root="$TEST_TMP/input-output"
 printf 'PUBLIC_HOSTNAME=input.test.invalid\nMANAGEMENT_BIND_IP=127.0.0.1\nMANAGEMENT_ALLOWED_CIDRS=127.0.0.1/32\n' >"$TEST_TMP/settings.env"
-"$INSTALLER" --generate-config --root "$input_root" --input "$TEST_TMP/settings.env" >"$TEST_TMP/input.log" 2>&1
+"$INSTALLER" --generate-config --profile public-https --root "$input_root" --input "$TEST_TMP/settings.env" >"$TEST_TMP/input.log" 2>&1
 grep -q '^PUBLIC_HOSTNAME=input.test.invalid$' "$input_root/.env" || fail "input file was not applied"
 pass "noninteractive input file"
 
 environment_root="$TEST_TMP/environment-output"
-VEINFIN_ROOT="$environment_root" "$INSTALLER" --generate-config --input "$TEST_TMP/settings.env" >"$TEST_TMP/environment-root.log" 2>&1
+VEINFIN_ROOT="$environment_root" "$INSTALLER" --generate-config --profile public-https --input "$TEST_TMP/settings.env" >"$TEST_TMP/environment-root.log" 2>&1
 [ -f "$environment_root/.env" ] || fail "VEINFIN_ROOT was not honored"
 pass "VEINFIN_ROOT output isolation"
+
+lan_root="$TEST_TMP/lan-output"
+"$INSTALLER" --generate-config --profile lan-only --root "$lan_root" \
+  --set PUBLIC_BIND_IP=127.0.0.1 --set MANAGEMENT_BIND_IP=192.0.2.10 \
+  --set MANAGEMENT_URL_HOST=192.0.2.10 --set MANAGEMENT_ALLOWED_CIDRS=192.0.2.20/32 \
+  --set PROTECTED_LAN_CIDRS=192.0.2.0/24 --set MEDIA_ROOT="$test_media_root" >"$TEST_TMP/lan.log" 2>&1
+grep -Fxq 'INSTALLATION_PROFILE=lan-only' "$lan_root/.env" || fail "LAN profile was not persisted"
+grep -Fxq 'JELLYFIN_PUBLIC_URL=http://192.0.2.10:8096' "$lan_root/runtime/generated/endpoints.env" || fail "LAN Jellyfin endpoint was not rendered"
+grep -Fq 'lan_access' "$REPO_DIR/scripts/installer.sh" || fail "LAN access stage is absent"
+grep -Fq 'SKIPPED_NOT_REQUESTED' "$REPO_DIR/scripts/installer.sh" || fail "optional migration skip status is not explicit"
+pass "LAN-only profile avoids public hostname and records optional-stage skips"
+
+grep -q 'vf_number.*-eq.*vf_frontier' "$REPO_DIR/scripts/installer.sh" || fail "resume does not verify only the latest completed stage frontier"
+grep -q 'plugins.sh.*--verify-integrations' "$REPO_DIR/scripts/installer.sh" || fail "completed-install verification omits plugin integrations"
+grep -A12 'vf_verify_install()' "$REPO_DIR/scripts/installer.sh" | grep -q 'lan-profile.sh.*--verify' || fail "explicit install verification omits the selected exposure profile"
+grep -q 'media_services-preserved-containers.txt' "$REPO_DIR/scripts/deploy/lan-profile.sh" || fail "LAN recreation does not refresh its verified Jellyfin preservation fingerprint"
+grep -q 'media_services-listeners-before.txt' "$REPO_DIR/scripts/deploy/lan-profile.sh" || fail "LAN publication does not refresh its verified listener baseline"
+pass "resume frontier and completed-stack verification are explicit"
+
+example_keys="$TEST_TMP/example-keys"
+accepted_keys="$TEST_TMP/accepted-keys"
+awk -F= '/^[A-Z][A-Z0-9_]*=/{print $1}' "$REPO_DIR/.env.example" | sort -u >"$example_keys"
+sed -n '/^vf_assign_setting()/,/^}/p' "$REPO_DIR/scripts/lib/config.sh" | sed -nE 's/^[[:space:]]*([A-Z][A-Z0-9_]*)\).*/\1/p' | sort -u >"$accepted_keys"
+cmp -s "$example_keys" "$accepted_keys" || { diff -u "$example_keys" "$accepted_keys" >&2 || true; fail ".env.example and parser key sets differ"; }
+while IFS= read -r key; do grep -Fq "\`$key\`" "$REPO_DIR/docs/CONFIGURATION.md" || fail "accepted key is undocumented: $key"; done <"$accepted_keys"
+pass "every example key is accepted and every accepted key is documented"
+
+expect_failure "unknown key" "$INSTALLER" --dry-run --profile lan-only --root "$TEST_TMP/unknown-key" --set PUBLIC_BIND_IP=127.0.0.1 --set UNKNOWN_INSTALL_KEY=value
+grep -Fq 'vf_stage_rollback' "$REPO_DIR/scripts/installer.sh" || fail "installer has no stage rollback dispatch"
+grep -Fq 'VEINFIN_CONFIG_ROOT="$CONFIG_ROOT"' "$REPO_DIR/scripts/installer.sh" || fail "installer does not pass generated roots to deployment stages"
+grep -Fq 'torrents/incomplete torrents/movies torrents/tv torrents/anime library/movies library/tv library/anime' "$REPO_DIR/scripts/installer.sh" || fail "clean media layout is not part of the core installer"
+pass "stage failure invokes rollback dispatch"
 
 if command -v git >/dev/null 2>&1; then
   if git -C "$REPO_DIR" ls-files -- .env runtime | grep -q .; then

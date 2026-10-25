@@ -20,7 +20,7 @@
 | Control panel | Deploy the private panel and restricted Docker lifecycle agent. |
 | Final verification | Verify health, exposure, security boundaries, and component fingerprints. |
 
-The installer does not deploy experimental plugins. It does not manage disks, DNS providers, routers, unrelated services, or operator backups.
+The installer deploys only the reviewed immutable plugin allowlist as a named component and does not deploy experimental plugins. It does not manage disks, DNS providers, routers, unrelated services, or operator backups.
 
 ## Resume behavior
 

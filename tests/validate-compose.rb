@@ -244,7 +244,23 @@ end
 errors << ".env.example: MANAGEMENT_PASSWORD contract is missing" unless env_values.key?("MANAGEMENT_PASSWORD")
 
 supported_plugin_lock = File.read(File.join(ROOT, "config", "plugins.lock"))
-errors << "supported plugin lock must remain empty until a plugin is reviewed" unless supported_plugin_lock.lines.grep_v(/^\s*(#|$)/).empty?
+plugin_entries = supported_plugin_lock.lines.grep_v(/^\s*(#|$)/).map { |line| line.chomp.split("|", 11) }
+errors << "supported plugin lock must contain reviewed entries" if plugin_entries.empty?
+plugin_entries.each do |entry|
+  errors << "config/plugins.lock: malformed entry" unless entry.length == 11
+  next unless entry.length == 11
+  key, name, guid, version, abi, _license, repository, artifact, digest, restart, files = entry
+  errors << "config/plugins.lock: invalid key" unless key.match?(/\A[A-Z][A-Z0-9_]+\z/)
+  errors << "config/plugins.lock: invalid name" if name.empty?
+  errors << "config/plugins.lock: invalid guid" unless guid.match?(/\A[0-9a-f-]{36}\z/)
+  errors << "config/plugins.lock: invalid version" unless version.match?(/\A\d+\.\d+\.\d+\.\d+\z/) && abi.match?(/\A10\.11\.\d+\.\d+\z/)
+  errors << "config/plugins.lock: repository is not official" unless repository.start_with?("https://github.com/")
+  errors << "config/plugins.lock: artifact is not immutable" unless artifact.match?(%r{\Ahttps://(?:github\.com/.+/releases/download/|repo\.jellyfin\.org/files/plugin/).+\.zip\z})
+  errors << "config/plugins.lock: invalid artifact digest" unless digest.match?(/\A[0-9a-f]{64}\z/)
+  errors << "config/plugins.lock: restart contract missing" unless restart == "true"
+  errors << "config/plugins.lock: invalid file hashes" unless files.split(",").all? { |file| file.match?(/\A[^=\/]+=([0-9a-f]{64})\z/) }
+end
+errors << "supported plugin lock contains a deferred plugin" if supported_plugin_lock.match?(/WhoIsWatching|Who's Watching|whos_watching/i)
 
 installer_sources = [File.join(ROOT, "install.sh"), File.join(ROOT, "scripts", "installer.sh")] +
                     Dir.glob(File.join(ROOT, "scripts", "lib", "*.sh"))
@@ -271,6 +287,14 @@ forbidden_patterns = {
 }
 TEXT_PATHS.each do |path|
   text = File.read(path)
+  if path == File.join(ROOT, "config", "plugins.lock")
+    text = text.lines.map do |line|
+      fields = line.split("|", -1)
+      fields[3] = "VERSION" if fields.length >= 4 && !line.start_with?("#")
+      fields[4] = "ABI" if fields.length >= 5 && !line.start_with?("#")
+      fields.join("|")
+    end.join
+  end
   forbidden_patterns.each do |label, pattern|
     errors << "#{path.delete_prefix(ROOT + '/')}: contains #{label}" if text.match?(pattern)
   end

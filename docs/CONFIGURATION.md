@@ -45,6 +45,24 @@ runtime/                        generated and ignored
 
 The example uses a documentation-only hostname and loopback values. Generation rejects the example hostname, empty required values, control characters, environment-file injection, malformed project names, conflicting host ports, unsafe or root paths, invalid UID/GID values, unknown time zones, wildcard management binding, malformed CIDR allowlists, unsafe render-device paths, and any image value that differs from `config/images.lock`.
 
+## Accepted key registry
+
+The parser rejects every key outside this registry. Every registry key is present in `.env.example`; the test suite compares the two sets exactly.
+
+| Purpose | Keys |
+| --- | --- |
+| Profile | `INSTALLATION_PROFILE`, `ENABLE_MIGRATION_STAGES` |
+| Identity | `COMPOSE_PROJECT_NAME`, `TZ`, `PUID`, `PGID`, `UMASK` |
+| Paths | `CONFIG_ROOT`, `MEDIA_ROOT`, `RUNTIME_ROOT`, `LEGACY_CANDIDATE_ROOT` |
+| Public HTTPS | `PUBLIC_HOSTNAME`, `PUBLIC_BIND_IP`, `HTTPS_PORT` |
+| Private access | `MANAGEMENT_BIND_IP`, `MANAGEMENT_URL_SCHEME`, `MANAGEMENT_URL_HOST`, `MANAGEMENT_ALLOWED_CIDRS`, `PROTECTED_LAN_CIDRS`, `SSH_PORT`, `MANAGEMENT_USERNAME`, `MANAGEMENT_PASSWORD` |
+| Private ports | `JELLYFIN_MANAGEMENT_PORT`, `QBITTORRENT_MANAGEMENT_PORT`, `SONARR_MANAGEMENT_PORT`, `RADARR_MANAGEMENT_PORT`, `PROWLARR_MANAGEMENT_PORT`, `BAZARR_MANAGEMENT_PORT`, `SEERR_MANAGEMENT_PORT`, `CONTROL_PANEL_MANAGEMENT_PORT`, `LEGACY_CANDIDATE_PORT` |
+| Discovery | `ENABLE_JELLYFIN_DISCOVERY`, `JELLYFIN_DISCOVERY_BIND_IP`, `JELLYFIN_DISCOVERY_PORT` |
+| Images | `CADDY_IMAGE_TAG`, `JELLYFIN_IMAGE_TAG`, `QBITTORRENT_IMAGE_TAG`, `SONARR_IMAGE_TAG`, `RADARR_IMAGE_TAG`, `PROWLARR_IMAGE_TAG`, `BAZARR_IMAGE_TAG`, `SEERR_IMAGE_TAG`, `RECYCLARR_IMAGE_TAG`, `FLARESOLVERR_IMAGE_TAG` |
+| Explicit optional features | `ENABLE_VPN_PROFILE`, `VPN_PROVIDER`, `ENABLE_HARDWARE_TRANSCODING`, `TRANSCODING_DEVICE` |
+
+`LEGACY_CANDIDATE_ROOT` and `LEGACY_CANDIDATE_PORT` are supported inputs for the separately invoked rollback-safe legacy-UI candidate workflow. They are validated and persisted but do not enable that optional workflow in the default installer.
+
 The shared private username defaults to `veinfin`; the password is randomly generated and is applied only by an authorized deployment operation. API keys are captured only from live applications and remain unique. Caddy currently requires no separate basic-auth or internal credential.
 
 ## Generation boundaries

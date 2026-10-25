@@ -51,6 +51,8 @@ has "$script_text" 'up -d --no-deps bazarr seerr flaresolverr' 'apply starts exa
 has "$script_text" 'stop bazarr seerr flaresolverr' 'pressure rollback stops only new services'
 has "$script_text" 'media_services-preserved-containers.txt' 'five existing fingerprints are preserved'
 has "$script_text" 'media_services-rsync-before.txt' 'external rsync identity is guarded'
+has "$script_text" 'ps -C rsync -o pid=,lstart=,comm= || true' 'clean host without rsync is supported'
+has "$script_text" 'Management password: %s' 'final root-only credential summary retains the generated management password'
 has "$script_text" 'sync --preview' 'only official Recyclarr preview is invoked'
 lacks "$script_text" 'recyclarr sync >' 'no unguarded Recyclarr sync invocation exists'
 has "$script_text" 'validated-not-applied' 'Recyclarr no-apply state is recorded'

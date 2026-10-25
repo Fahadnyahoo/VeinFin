@@ -43,6 +43,7 @@ has "$script_text" 'up -d --no-deps sonarr radarr prowlarr' 'apply starts exactl
 has "$script_text" 'stop sonarr radarr prowlarr' 'rollback stops only new services'
 has "$script_text" 'arr-preserved-containers.txt' 'existing fingerprints are preserved'
 has "$script_text" 'external rsync process count changed' 'external copy process is guarded'
+has "$script_text" 'pgrep -x rsync || true' 'clean host without rsync is supported'
 has "$script_text" 'hardlink shared device/inode' 'hardlink verification is implemented'
 has "$script_text" 'find "$TEST_TORRENT_DIR" -depth -delete' 'hardlink source cleanup is implemented'
 has "$script_text" 'find "$TEST_LIBRARY_DIR" -depth -delete' 'hardlink destination cleanup is implemented'

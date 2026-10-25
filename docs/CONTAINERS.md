@@ -38,7 +38,7 @@ The Compose health checks are candidates to be validated against the exact locke
 | Service | Candidate signal | Open validation |
 | --- | --- | --- |
 | Caddy | `caddy version` plus external HTTPS/certificate validation | Validated with the locked image during HTTPS deployment. |
-| Jellyfin | HTTP `/health` | Validated with the locked 12.3 image during Jellyfin deployment. |
+| Jellyfin | HTTP `/health` | Validated with the locked 10.11.11 image during Jellyfin deployment. |
 | qBittorrent | Web root responds | Validated with the locked 5.3.0 LinuxServer image during qBittorrent deployment; authenticated API verification is performed by the deployment script. |
 | Sonarr/Radarr/Prowlarr | HTTP `/ping` | Validated with the locked images during ARR deployment; authenticated API verification proves integration readiness. |
 | Bazarr | Web root responds | Validated with the locked image during Media services; authenticated API verification proves configuration readiness. |

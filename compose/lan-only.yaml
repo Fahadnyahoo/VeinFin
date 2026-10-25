@@ -1,0 +1,16 @@
+services:
+  jellyfin:
+    ports:
+      - name: jellyfin-loopback
+        target: 8096
+        published: "8096"
+        host_ip: "127.0.0.1"
+        protocol: tcp
+      - name: jellyfin-management
+        target: 8096
+        published: "${JELLYFIN_MANAGEMENT_PORT:-8096}"
+        host_ip: "${MANAGEMENT_BIND_IP:?Set MANAGEMENT_BIND_IP}"
+        protocol: tcp
+    labels:
+      io.veinfin.visit-url-template: "http://${MANAGEMENT_URL_HOST:?Set MANAGEMENT_URL_HOST}:${JELLYFIN_MANAGEMENT_PORT:-8096}"
+      io.veinfin.exposure: "private"
